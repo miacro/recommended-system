@@ -1,6 +1,7 @@
 import os
 import glob
 import tensorflow as tf
+import json as JSON
 
 
 class Dataset():
@@ -26,7 +27,7 @@ class Dataset():
         for movieid, consumerid in self.read_file(probefile):
             if movieid not in self.probe_set:
                 self.probe_set[movieid] = {}
-            self.probe_set[movieid][consumerid] = {"rate": 0, "date": None}
+            self.probe_set[movieid][consumerid] = {}
 
         directory = os.path.join(self.directory, "training_set")
         filenames = glob.glob(os.path.join(directory, "*.txt"))
@@ -53,13 +54,17 @@ class Dataset():
     def load_qualifying_set(self):
         filename = os.path.join(self.directory, "qualifying.txt")
         for movieid, consumerid, date in self.read_file(filename):
-            yield self.movieids[movieid], self.consumerids[consumerid], date
+            if movieid in self.movieids and consumerid in self.consumerids:
+                yield (self.movieids[movieid], self.consumerids[consumerid],
+                       date)
 
     def load_probe_set(self):
         for movieid, item in self.probe_set.items():
             for consumerid, value in item.items():
-                yield self.movieids[movieid], self.consumerids[
-                    consumerid], value["rate"], value["date"]
+                if value:
+                    yield (self.movieids[movieid],
+                           self.consumerids[consumerid], value["rate"],
+                           value["date"])
 
     def convert(self, output):
         trainingfile = os.path.join(output, "trainingset.tfrecord")
@@ -67,25 +72,90 @@ class Dataset():
         qualifyingfile = os.path.join(output, "qualifying.tfrecord")
         movieidsfile = os.path.join(output, "movieids.json")
         consumeridsfile = os.path.join(output, "consumerids.json")
-        for movieindex, consumerindex, rate, date in self.load_training_set():
-            example = tf.train.Example(
-                features=tf.train.Features(
-                    feature={
-                        "movieindex":
-                        tf.train.Feature(
-                            int64_list=tf.train.Int64List(value=[movieindex])),
-                        "consumerindex":
-                        tf.train.Feature(
-                            int64_list=tf.train.Int64List(
-                                value=[consumerindex])),
-                        "rate":
-                        tf.train.Feature(
-                            float_list=tf.train.FloatList(value=[rate])),
-                        "date":
-                        tf.train.Feature(
-                            bytes_list=tf.train.BytesList(
-                                [tf.compat.as_bytes(date)])),
-                    }))
+        with tf.python_io.TFRecordWriter(
+                trainingfile,
+                options=tf.python_io.TFRecordOptions(
+                    compression_type=tf.python_io.TFRecordCompressionType.GZIP)
+        ) as writer:
+            for (movieindex, consumerindex, rate,
+                 date) in self.load_training_set():
+                example = tf.train.Example(
+                    features=tf.train.Features(
+                        feature={
+                            "movieindex":
+                            tf.train.Feature(
+                                int64_list=tf.train.Int64List(
+                                    value=[movieindex])),
+                            "consumerindex":
+                            tf.train.Feature(
+                                int64_list=tf.train.Int64List(
+                                    value=[consumerindex])),
+                            "rate":
+                            tf.train.Feature(
+                                float_list=tf.train.FloatList(value=[rate])),
+                            "date":
+                            tf.train.Feature(
+                                bytes_list=tf.train.BytesList(
+                                    value=[tf.compat.as_bytes(date)])),
+                        }))
+                writer.write(example.SerializeToString())
+        with open(movieidsfile, "wt") as writer:
+            content = JSON.dumps(self.movieids, ensure_ascii=False, indent=2)
+            writer.writelines(content)
+        with open(consumeridsfile, "wt") as writer:
+            content = JSON.dumps(
+                self.consumerids, ensure_ascii=False, indent=2)
+            writer.writelines(content)
+        with tf.python_io.TFRecordWriter(
+                qualifyingfile,
+                options=tf.python_io.TFRecordOptions(
+                    compression_type=tf.python_io.TFRecordCompressionType.GZIP)
+        ) as writer:
+            for movieindex, consumerindex, date in self.load_qualifying_set():
+                example = tf.train.Example(
+                    features=tf.train.Features(
+                        feature={
+                            "movieindex":
+                            tf.train.Feature(
+                                int64_list=tf.train.Int64List(
+                                    value=[movieindex])),
+                            "consumerindex":
+                            tf.train.Feature(
+                                int64_list=tf.train.Int64List(
+                                    value=[consumerindex])),
+                            "date":
+                            tf.train.Feature(
+                                bytes_list=tf.train.BytesList(
+                                    value=[tf.compat.as_bytes(date)])),
+                        }))
+                writer.write(example.SerializeToString())
+        with tf.python_io.TFRecordWriter(
+                probefile,
+                options=tf.python_io.TFRecordOptions(
+                    compression_type=tf.python_io.TFRecordCompressionType.GZIP)
+        ) as writer:
+            for (movieindex, consumerindex, rate,
+                 date) in self.load_probe_set():
+                example = tf.train.Example(
+                    features=tf.train.Features(
+                        feature={
+                            "movieindex":
+                            tf.train.Feature(
+                                int64_list=tf.train.Int64List(
+                                    value=[movieindex])),
+                            "consumerindex":
+                            tf.train.Feature(
+                                int64_list=tf.train.Int64List(
+                                    value=[consumerindex])),
+                            "rate":
+                            tf.train.Feature(
+                                float_list=tf.train.FloatList(value=[rate])),
+                            "date":
+                            tf.train.Feature(
+                                bytes_list=tf.train.BytesList(
+                                    value=[tf.compat.as_bytes(date)])),
+                        }))
+                writer.write(example.SerializeToString())
 
 
 if __name__ == "__main__":
