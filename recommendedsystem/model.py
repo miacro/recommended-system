@@ -1,5 +1,5 @@
 from tensorflow import keras
-from . import netflix_prize_dataset as Dataset
+from recommendedsystem.netflix_prize_dataset import Dataset
 
 if __name__ == "__main__":
     movie_count = 17771
@@ -9,14 +9,14 @@ if __name__ == "__main__":
     model_right = keras.Sequential()
     model_right.add(keras.layers.Embedding(user_count, 20, input_length=1))
     model = keras.Sequential()
-    model.add(keras.Merge()[model_left, model_right], mode="concat")
-    model.add(keras.Flatten())
-    model.add(keras.Dense(64))
-    model.add(keras.activations.sigmoid())
+    model.add(keras.layers.Concatenate())
+    model.add(keras.layers.Flatten())
     model.add(keras.layers.Dense(64))
-    model.add(keras.activations.sigmoid())
+    model.add(keras.layers.Activation(activation="sigmoid"))
     model.add(keras.layers.Dense(64))
-    model.add(keras.activations.sigmoid())
+    model.add(keras.layers.Activation(activation="sigmoid"))
+    model.add(keras.layers.Dense(64))
+    model.add(keras.layers.Activation(activation="sigmoid"))
     model.add(keras.layers.Dense(1))
     model.compile(loss="mean_seqared_error", optimizer='adadelta')
 

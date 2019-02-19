@@ -83,7 +83,7 @@ class Dataset():
                     value=[tf.compat.as_bytes(kwargs["date"])]))
         return tf.train.Example(features=tf.train.Features(feature=feature))
 
-    def tfdateset(self, target="trainingset"):
+    def tfdataset(self, target="trainingset"):
         if target == "trainingset":
             filename = "trainingset.tfrecord"
         elif target == "qualifyingset":
@@ -199,7 +199,7 @@ if __name__ == "__main__":
         dataset.convert(args.output)
     elif args.command == "inspect":
         dataset = Dataset(directory=args.directory)
-        dataset = dataset.tfdateset("{}set".format(args.set))
+        dataset = dataset.tfdataset("{}set".format(args.set))
         dataset = dataset.batch(1)
         iterator = dataset.make_one_shot_iterator()
         tensors = iterator.get_next()
