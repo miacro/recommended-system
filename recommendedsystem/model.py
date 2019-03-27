@@ -47,17 +47,18 @@ def load_model(model, checkpoint):
         model.load_weights(latest_checkpoint)
 
 
-def train_model(model, dataset, epochs, checkpoint):
+def train_model(model, dataset, epochs, checkpoint, logdir):
     checkpoint_callback = keras.callbacks.ModelCheckpoint(
         checkpoint,
         save_weights_only=True,
         verbose=1,
     )
+    tensorboard_callback = keras.callbacks.TensorBoard(logdir)
     model.fit(
         dataset,
         epochs=epochs,
         steps_per_epoch=24,
-        callbacks=[checkpoint_callback],
+        callbacks=[checkpoint_callback, tensorboard_callback],
     )
     # model.save_weights(MODEL_PATH)
 
@@ -71,6 +72,7 @@ def main():
     DATASET_DIR = os.path.expanduser("~/repository/datasets/netflix-prize/tfrecord")
     # CHECKPOINT_PATH = "./checkpoint/model-{epoch:08d}.ckpt"
     CHECKPOINT_PATH = "./checkpoint/model.h5"
+    LOG_DIR= "./logs"
     EPOCHS = 1000
     BATCH_SIZE = 60
 
@@ -94,7 +96,7 @@ def main():
     dataset_train = dataset_train.map(convert)
     dataset_evaluate = dataset_evaluate.map(convert)
 
-    train_model(model, dataset_train, EPOCHS, CHECKPOINT_PATH)
+    train_model(model, dataset_train, EPOCHS, CHECKPOINT_PATH, LOG_DIR)
     loss, accuracy = evaluate_model(model, dataset_evaluate)
     print("accuracy: {:5.2f}%".format(accuracy * 100))
 
