@@ -68,7 +68,7 @@ def evaluate_model(model, dataset):
 
 
 def main():
-    DATASET_DIR = os.path.expanduser("~/datasets/netflix-prize/tfrecord")
+    DATASET_DIR = os.path.expanduser("~/repository/datasets/netflix-prize/tfrecord")
     # CHECKPOINT_PATH = "./checkpoint/model-{epoch:08d}.ckpt"
     CHECKPOINT_PATH = "./checkpoint/model.h5"
     EPOCHS = 1000
