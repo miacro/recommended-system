@@ -27,8 +27,12 @@ def create_model():
     x = keras.layers.Activation(activation="sigmoid")(x)
     y = keras.layers.Dense(1)(x)
     model = keras.models.Model([input_movie, input_consumer], y)
+    def loss_fn(y_true, y_pred):
+        print(input_movie)
+        return y_true - y_pred
     model.compile(
         loss="mean_squared_error",
+        # loss=loss_fn,
         optimizer='adadelta',
         metrics=['accuracy'],
     )
