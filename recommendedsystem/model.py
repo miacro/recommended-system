@@ -7,36 +7,40 @@ import logging
 # tf.enable_eager_execution()
 
 
-def create_model():
-    MOVIE_COUNT = 17771
-    CONSUMER_COUNT = 2649430
+class NetflixPrizeModel(keras.Model):
+    def __init__(self, movie_count=17771, consumer_count=2649430):
+        super(NetflixPrizeModel, self).__init__(name="NetflixPrizeModel")
+        self.movie_count = movie_count
+        self.consumer_count = consumer_count
+        self.embedding_movie = keras.layers.Embedding(
+            self.movie_count, 60, input_length=1)
+        self.embedding_consumer = keras.layers.Embedding(
+            self.consumer_count, 20, input_length=1)
+        self.concatenate = keras.layers.Concatenate(axis=2)
+        self.flatten = keras.layers.Flatten()
+        self.dense1 = keras.layers.Dense(64)
+        self.activation1 = keras.layers.Activation(activation="sigmoid")
+        self.dense2 = keras.layers.Dense(64)
+        self.activation2 = keras.layers.Activation(activation="sigmoid")
+        self.dense3 = keras.layers.Dense(64)
+        self.activation3 = keras.layers.Activation(activation="sigmoid")
+        self.dense4 = keras.layers.Dense(1)
 
-    input_movie = keras.layers.Input(name="movieindex", shape=(1, ))
-    input_consumer = keras.layers.Input(name="consumerindex", shape=(1, ))
-    x_movie = keras.layers.Embedding(
-        MOVIE_COUNT, 60, input_length=1)(input_movie)
-    x_consumer = keras.layers.Embedding(
-        CONSUMER_COUNT, 20, input_length=1)(input_consumer)
-    x = keras.layers.Concatenate()([x_movie, x_consumer])
-    x = keras.layers.Flatten()(x)
-    x = keras.layers.Dense(64)(x)
-    x = keras.layers.Activation(activation="sigmoid")(x)
-    x = keras.layers.Dense(64)(x)
-    x = keras.layers.Activation(activation="sigmoid")(x)
-    x = keras.layers.Dense(64)(x)
-    x = keras.layers.Activation(activation="sigmoid")(x)
-    y = keras.layers.Dense(1)(x)
-    model = keras.models.Model([input_movie, input_consumer], y)
-    def loss_fn(y_true, y_pred):
-        print(input_movie)
-        return y_true - y_pred
-    model.compile(
-        loss="mean_squared_error",
-        # loss=loss_fn,
-        optimizer='adadelta',
-        metrics=['accuracy'],
-    )
-    return model
+    def call(self, inputs):
+        x_movie = self.flatten(inputs["movie"])
+        x_consumer = self.flatten(inputs["consumer"])
+        x_movie = self.embedding_movie(x_movie)
+        x_consumer = self.embedding_consumer(x_consumer)
+        x = self.concatenate([x_movie, x_consumer])
+        x = self.flatten(x)
+        x = self.dense1(x)
+        x = self.activation1(x)
+        x = self.dense2(x)
+        x = self.activation2(x)
+        x = self.dense3(x)
+        x = self.activation3(x)
+        x = self.dense4(x)
+        return x
 
 
 def load_model(model, checkpoint):
@@ -73,32 +77,40 @@ def evaluate_model(model, dataset):
 
 
 def main():
-    DATASET_DIR = os.path.expanduser("~/repository/datasets/netflix-prize/tfrecord")
+    DATASET_DIR = os.path.expanduser(
+        "~/repository/datasets/netflix-prize/tfrecord")
     # CHECKPOINT_PATH = "./checkpoint/model-{epoch:08d}.ckpt"
     CHECKPOINT_PATH = "./checkpoint/model.h5"
-    LOG_DIR= "./logs"
+    LOG_DIR = "./logs"
     EPOCHS = 1000
     BATCH_SIZE = 60
 
-    model = create_model()
-    model.summary()
+    model = NetflixPrizeModel()
+    model.compile(
+        loss="mean_squared_error",
+        # loss=loss_fn,
+        optimizer='adadelta',
+        # optimizer=tf.train.AdamOptimizer(),
+        metrics=['accuracy'],
+    )
+    # model.summary()
     load_model(model, CHECKPOINT_PATH)
 
     dataset = Dataset(directory=DATASET_DIR)
     dataset_train = dataset.tfdataset("trainingset")
-    dataset_train = dataset_train.batch(BATCH_SIZE)
 
     dataset_evaluate = dataset.tfdataset("qualifyingset")
-    dataset_evaluate = dataset_evaluate.batch(1)
 
     def convert(x):
         return {
-            "movieindex": x["movieindex"],
-            "consumerindex": x["consumerindex"]
+            "movie": x["movieindex"],
+            "consumer": x["consumerindex"]
         }, x["rate"]
 
     dataset_train = dataset_train.map(convert)
     dataset_evaluate = dataset_evaluate.map(convert)
+    dataset_train = dataset_train.batch(BATCH_SIZE)
+    dataset_evaluate = dataset_evaluate.batch(1)
 
     train_model(model, dataset_train, EPOCHS, CHECKPOINT_PATH, LOG_DIR)
     loss, accuracy = evaluate_model(model, dataset_evaluate)
