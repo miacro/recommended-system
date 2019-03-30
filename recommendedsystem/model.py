@@ -7,40 +7,23 @@ import logging
 # tf.enable_eager_execution()
 
 
-class NetflixPrizeModel(keras.Model):
-    def __init__(self, movie_count=17771, consumer_count=2649430):
-        super(NetflixPrizeModel, self).__init__(name="NetflixPrizeModel")
-        self.movie_count = movie_count
-        self.consumer_count = consumer_count
-        self.embedding_movie = keras.layers.Embedding(
-            self.movie_count, 60, input_length=1)
-        self.embedding_consumer = keras.layers.Embedding(
-            self.consumer_count, 20, input_length=1)
-        self.concatenate = keras.layers.Concatenate(axis=2)
-        self.flatten = keras.layers.Flatten()
-        self.dense1 = keras.layers.Dense(64)
-        self.activation1 = keras.layers.Activation(activation="sigmoid")
-        self.dense2 = keras.layers.Dense(64)
-        self.activation2 = keras.layers.Activation(activation="sigmoid")
-        self.dense3 = keras.layers.Dense(64)
-        self.activation3 = keras.layers.Activation(activation="sigmoid")
-        self.dense4 = keras.layers.Dense(1)
-
-    def call(self, inputs):
-        x_movie = self.flatten(inputs["movie"])
-        x_consumer = self.flatten(inputs["consumer"])
-        x_movie = self.embedding_movie(x_movie)
-        x_consumer = self.embedding_consumer(x_consumer)
-        x = self.concatenate([x_movie, x_consumer])
-        x = self.flatten(x)
-        x = self.dense1(x)
-        x = self.activation1(x)
-        x = self.dense2(x)
-        x = self.activation2(x)
-        x = self.dense3(x)
-        x = self.activation3(x)
-        x = self.dense4(x)
-        return x
+def create_netflixprize_model(movie_count=17771, consumer_count=2649430):
+    input_movie = keras.layers.Input(name="movie", shape=(1, ))
+    input_consumer = keras.layers.Input(name="consumer", shape=(1, ))
+    x_movie = keras.layers.Embedding(
+        movie_count, 60, input_length=1)(input_movie)
+    x_consumer = keras.layers.Embedding(
+        consumer_count, 20, input_length=1)(input_consumer)
+    x = keras.layers.Concatenate()([x_movie, x_consumer])
+    x = keras.layers.Flatten()(x)
+    x = keras.layers.Dense(64)(x)
+    x = keras.layers.Activation(activation="sigmoid")(x)
+    x = keras.layers.Dense(64)(x)
+    x = keras.layers.Activation(activation="sigmoid")(x)
+    x = keras.layers.Dense(64)(x)
+    x = keras.layers.Activation(activation="sigmoid")(x)
+    x = keras.layers.Dense(1)(x)
+    return keras.Model(inputs=[input_movie, input_consumer], outputs=x)
 
 
 def load_model(model, checkpoint):
@@ -79,12 +62,14 @@ def evaluate_model(model, dataset):
 def main():
     DATASET_DIR = os.path.expanduser("~/datasets/netflix-prize/tfrecord")
     # CHECKPOINT_PATH = "./checkpoint/model-{epoch:08d}.ckpt"
-    CHECKPOINT_PATH = "./checkpoint/model.h5"
-    LOG_DIR = "./logs"
+    CHECKPOINT_PATH = os.path.expanduser("./checkpoint/model.h5")
+    LOG_DIR = os.path.expanduser("./logs")
     EPOCHS = 1000
     BATCH_SIZE = 60
+    if not os.path.isdir(os.path.dirname(CHECKPOINT_PATH)):
+        os.makedirs(os.path.dirname(CHECKPOINT_PATH))
 
-    model = NetflixPrizeModel()
+    model = create_netflixprize_model()
     model.compile(
         loss="mean_squared_error",
         # loss=loss_fn,
