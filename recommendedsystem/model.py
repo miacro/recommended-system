@@ -16,13 +16,29 @@ def create_netflixprize_model(movie_count=17771, consumer_count=2649430):
         consumer_count, 20, input_length=1)(input_consumer)
     x = keras.layers.Concatenate()([x_movie, x_consumer])
     x = keras.layers.Flatten()(x)
-    x = keras.layers.Dense(64)(x)
+    x = keras.layers.Dense(
+        64,
+        kernel_initializer=keras.initializers.RandomUniform(),
+        bias_initializer=keras.initializers.Zeros(),
+    )(x)
     x = keras.layers.Activation(activation="sigmoid")(x)
-    x = keras.layers.Dense(64)(x)
+    x = keras.layers.Dense(
+        64,
+        kernel_initializer=keras.initializers.RandomUniform(),
+        bias_initializer=keras.initializers.Zeros(),
+    )(x)
     x = keras.layers.Activation(activation="sigmoid")(x)
-    x = keras.layers.Dense(64)(x)
+    x = keras.layers.Dense(
+        64,
+        kernel_initializer=keras.initializers.RandomUniform(),
+        bias_initializer=keras.initializers.Zeros(),
+    )(x)
     x = keras.layers.Activation(activation="sigmoid")(x)
-    x = keras.layers.Dense(1)(x)
+    x = keras.layers.Dense(
+        1,
+        kernel_initializer=keras.initializers.RandomUniform(),
+        bias_initializer=keras.initializers.Zeros(),
+    )(x)
     return keras.Model(inputs=[input_movie, input_consumer], outputs=x)
 
 
@@ -66,8 +82,9 @@ def main():
     # CHECKPOINT_PATH = "./checkpoint/model-{epoch:08d}.ckpt"
     CHECKPOINT_PATH = os.path.expanduser("./checkpoint/model.h5")
     LOG_DIR = os.path.expanduser("./logs")
-    EPOCHS = 1000
-    BATCH_SIZE = 60
+    EPOCHS = 40
+    BATCH_SIZE = 20000
+    BUFFER_SIZE = 40000
     if not os.path.isdir(os.path.dirname(CHECKPOINT_PATH)):
         os.makedirs(os.path.dirname(CHECKPOINT_PATH))
 
@@ -86,9 +103,10 @@ def main():
     dataset_train = dataset.tfdataset("trainingset")
     dataset_evaluate = dataset.tfdataset("qualifyingset")
     dataset_validate = dataset.tfdataset("probeset")
-    dataset_train = dataset_train.shuffle(buffer_size=1000)
-    dataset_evaluate = dataset_evaluate.shuffle(buffer_size=1000)
-    dataset_validate = dataset_validate.shuffle(buffer_size=1000)
+    dataset_train = dataset_train.shuffle(buffer_size=BUFFER_SIZE)
+    dataset_evaluate = dataset_evaluate.shuffle(buffer_size=BUFFER_SIZE)
+    dataset_validate = dataset_validate.shuffle(buffer_size=BUFFER_SIZE)
+    dataset_train = dataset_train.repeat(3)
 
     def convert(x):
         return {
