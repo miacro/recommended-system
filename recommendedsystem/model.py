@@ -38,7 +38,7 @@ def load_model(model, checkpoint):
         model.load_weights(latest_checkpoint)
 
 
-def train_model(model, dataset, epochs, checkpoint, logdir):
+def train_model(model, dataset, validation, epochs, checkpoint, logdir):
     checkpoint_callback = keras.callbacks.ModelCheckpoint(
         checkpoint,
         save_weights_only=True,
@@ -48,14 +48,16 @@ def train_model(model, dataset, epochs, checkpoint, logdir):
     model.fit(
         dataset,
         epochs=epochs,
-        steps_per_epoch=24,
+        validation_data=validation,
+        steps_per_epoch=100,
+        validation_steps=20,
         callbacks=[checkpoint_callback, tensorboard_callback],
     )
     # model.save_weights(MODEL_PATH)
 
 
 def evaluate_model(model, dataset):
-    loss, accuracy = model.evaluate(dataset, steps=1)
+    loss, accuracy = model.evaluate(dataset, steps=10000)
     return loss, accuracy
 
 
@@ -82,8 +84,11 @@ def main():
 
     dataset = Dataset(directory=DATASET_DIR)
     dataset_train = dataset.tfdataset("trainingset")
-
     dataset_evaluate = dataset.tfdataset("qualifyingset")
+    dataset_validate = dataset.tfdataset("probeset")
+    dataset_train = dataset_train.shuffle(buffer_size=1000)
+    dataset_evaluate = dataset_evaluate.shuffle(buffer_size=1000)
+    dataset_validate = dataset_validate.shuffle(buffer_size=1000)
 
     def convert(x):
         return {
@@ -93,10 +98,12 @@ def main():
 
     dataset_train = dataset_train.map(convert)
     dataset_evaluate = dataset_evaluate.map(convert)
+    dataset_validate = dataset_validate.map(convert)
     dataset_train = dataset_train.batch(BATCH_SIZE)
-    dataset_evaluate = dataset_evaluate.batch(1)
-
-    train_model(model, dataset_train, EPOCHS, CHECKPOINT_PATH, LOG_DIR)
+    dataset_evaluate = dataset_evaluate.batch(20)
+    dataset_validate = dataset_validate.batch(60)
+    train_model(model, dataset_train, dataset_validate, EPOCHS,
+                CHECKPOINT_PATH, LOG_DIR)
     loss, accuracy = evaluate_model(model, dataset_evaluate)
     print("accuracy: {:5.2f}%".format(accuracy * 100))
 
