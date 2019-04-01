@@ -17,29 +17,22 @@ def create_netflixprize_model(movie_count=17771, consumer_count=2649430):
         consumer_count, 20, input_length=1)(input_consumer)
     x = keras.layers.Concatenate()([x_movie, x_consumer])
     x = keras.layers.Flatten()(x)
-    x = keras.layers.Dense(
-        64,
-        kernel_initializer=keras.initializers.RandomUniform(),
-        bias_initializer=keras.initializers.Zeros(),
-    )(x)
-    x = keras.layers.Activation(activation="relu")(x)
-    x = keras.layers.Dense(
-        64,
-        kernel_initializer=keras.initializers.RandomUniform(),
-        bias_initializer=keras.initializers.Zeros(),
-    )(x)
-    x = keras.layers.Activation(activation="relu")(x)
-    x = keras.layers.Dense(
-        64,
-        kernel_initializer=keras.initializers.RandomUniform(),
-        bias_initializer=keras.initializers.Zeros(),
-    )(x)
-    x = keras.layers.Activation(activation="relu")(x)
-    x = keras.layers.Dense(
-        1,
-        kernel_initializer=keras.initializers.RandomUniform(),
-        bias_initializer=keras.initializers.Zeros(),
-    )(x)
+
+    def add_layer(x, units=64):
+        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.Activation(activation="relu")(x)
+        x = keras.layers.Dense(
+            units,
+            kernel_initializer=keras.initializers.RandomUniform(),
+            bias_initializer=keras.initializers.Zeros(),
+            kernel_regularizer=keras.regularizers.l2(0.01),
+            bias_regularizer=keras.regularizers.l2(0.01))(x)
+        return x
+
+    x = add_layer(x, 64)
+    x = add_layer(x, 64)
+    x = add_layer(x, 64)
+    x = add_layer(x, 1)
     return keras.Model(inputs=[input_movie, input_consumer], outputs=x)
 
 
