@@ -3,6 +3,7 @@ from recommendedsystem.netflix_prize_dataset import Dataset
 import os
 import tensorflow as tf
 import logging
+import math
 
 # tf.enable_eager_execution()
 
@@ -21,19 +22,19 @@ def create_netflixprize_model(movie_count=17771, consumer_count=2649430):
         kernel_initializer=keras.initializers.RandomUniform(),
         bias_initializer=keras.initializers.Zeros(),
     )(x)
-    x = keras.layers.Activation(activation="sigmoid")(x)
+    x = keras.layers.Activation(activation="relu")(x)
     x = keras.layers.Dense(
         64,
         kernel_initializer=keras.initializers.RandomUniform(),
         bias_initializer=keras.initializers.Zeros(),
     )(x)
-    x = keras.layers.Activation(activation="sigmoid")(x)
+    x = keras.layers.Activation(activation="relu")(x)
     x = keras.layers.Dense(
         64,
         kernel_initializer=keras.initializers.RandomUniform(),
         bias_initializer=keras.initializers.Zeros(),
     )(x)
-    x = keras.layers.Activation(activation="sigmoid")(x)
+    x = keras.layers.Activation(activation="relu")(x)
     x = keras.layers.Dense(
         1,
         kernel_initializer=keras.initializers.RandomUniform(),
@@ -73,8 +74,7 @@ def train_model(model, dataset, validation, epochs, checkpoint, logdir):
 
 
 def evaluate_model(model, dataset):
-    loss, accuracy = model.evaluate(dataset, steps=10000)
-    return loss, accuracy
+    return model.evaluate(dataset, steps=10000)
 
 
 def main():
@@ -89,12 +89,16 @@ def main():
         os.makedirs(os.path.dirname(CHECKPOINT_PATH))
 
     model = create_netflixprize_model()
+
+    def loss_fn(y_true, y_pred):
+        return keras.backend.sqrt(
+            keras.metrics.mean_squared_error(y_true, y_pred * 5))
+
     model.compile(
-        loss="mean_squared_error",
         # loss=loss_fn,
+        loss="mean_squared_error",
         optimizer='adadelta',
         # optimizer=tf.train.AdamOptimizer(),
-        metrics=['accuracy'],
     )
     # model.summary()
     load_model(model, CHECKPOINT_PATH)
@@ -122,8 +126,8 @@ def main():
     dataset_validate = dataset_validate.batch(60)
     train_model(model, dataset_train, dataset_validate, EPOCHS,
                 CHECKPOINT_PATH, LOG_DIR)
-    loss, accuracy = evaluate_model(model, dataset_evaluate)
-    print("accuracy: {:5.2f}%".format(accuracy * 100))
+    loss = evaluate_model(model, dataset_evaluate)
+    print("rmse: {:5.2f}".format(math.sqrt(loss)))
 
 
 if __name__ == "__main__":
