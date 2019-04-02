@@ -84,12 +84,13 @@ def main():
     model = create_netflixprize_model()
 
     def loss_fn(y_true, y_pred):
-        return keras.backend.sqrt(
-            keras.metrics.mean_squared_error(y_true, y_pred * 5))
+        # return keras.backend.sqrt(
+        #    keras.metrics.mean_squared_error(y_true, y_pred * 5))
+        return keras.metrics.mean_squared_error(y_true, y_pred * 5)
 
     model.compile(
-        # loss=loss_fn,
-        loss="mean_squared_error",
+        loss=loss_fn,
+        # loss="mean_squared_error",
         optimizer='adadelta',
         # optimizer=tf.train.AdamOptimizer(),
     )
